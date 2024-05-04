@@ -133,59 +133,6 @@ plot(sigma(forc))
 
 ```
 
-```{r}
-df=read.csv("C:\\Users\\Shobhan Sarkar\\OneDrive\\Desktop\\energy papers\\BTC-USD.csv")
-head(df)
-
-```
-```{r}
-View(df)
-#if a time series displays a stochastic trend, we should always consider the ARIMA model instead of the simple ARMA model
-```
-
-```{r}
-BTCDATA= ts(df[,6],frequency = 12,start = c(2015,1))
-View(BTCDATA)
-#head(BTCDATA)
-```
-
-```{r plot the time series}
-plot(BTCDATA,main="Bitcoin monthly data")
-abline(reg = lm(BTCDATA~time(BTCDATA),col="red"))
-```
-
-```{r arima model estimation}
-AR=arima(BTCDATA,order = c(2,1,2))
-print(AR)
-```
-```{r}
-ts.plot(BTCDATA,main="Monthly Bitcoin and Predicted")
-AR_fit=BTCDATA-residuals(AR)
-points(AR_fit,type="l",col="red",lty=2)
-```
-```{r}
-predict_AR=predict(AR)
-predict_AR$pred[1]
-predict(AR,n.ahead = 50)
-predict_AR$pred
-
-```
-
-```{r}
-#obtaining 1 step forecast using spread[1]
-predict_AR$pred[1]
-#Alternatively using predicts to make 1-step through 5-step forecasts
-predict(AR,n.ahead = 5)
-predict_AR$pred
-```
-```{r Interval Forecasting using ARMA model}
-ts.plot(BTCDATA,xlim=c(2015,2024))
-AR_forecast= predict(AR,n.head=5)$pred
-AR_forecast_se=predict(AR,n.head=5)$se
-points(AR_forecast,type="l",col=2)
-points(AR_forecast-2*AR_forecast_se,type="l",col=2,lty=2)
-points(AR_forecast+2*AR_forecast_se,type="l",col=2,lty=2)
-```
 
 
 
