@@ -1,0 +1,203 @@
+---
+title: "GARCH"
+author: "shobhan sarkar"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+install.packages("quantmod")#financial data scraping
+library(quantmod)
+library(dplyr)
+library(tidyverse)
+install.packages("tseries")# for time series manipulation
+library(tseries)
+install.packages("rugarch")#for GARCH model specification and estimation
+library(rugarch)
+library(xts)
+install.packages("PerformanceAnalytics")#analyze the performance of our models setting
+library(PerformanceAnalytics)
+```
+```{r}
+df=getSymbols("TSLA",from="2010-01-01",to="2024-03-31")
+chartSeries(TSLA)
+head(df)
+
+```
+```{r}
+chartSeries(TSLA["2024-01"])#red color means that we had a negative return or a decrease of the price, while a green color of the candle means that the price has increase over the considered day.
+
+
+```
+```{r}
+return= CalculateReturns(TSLA$TSLA.Adjusted)
+return=return[-c(1),]#remove the first row as it doesnot contain a value
+#plot the time series of the returns
+chart_Series(return)
+#plot the histogram of the returns
+chart.Histogram(return,methods = c('add.density','add.normal'),colorset = c('blue','red','black'))
+legend("topright",legend=c("return","kernel","normal dist"),fill=c('blue','red','black'))
+```
+```{r}
+#As we can see, the histogram of the of the returns seems to be more skewed than the normal distribution, meaning that considering the normal distribution for the returns is not a good choice. The student distribution  tends to be the more adapted for this distribution. We will see if that is confirmed by the model estimation. 
+#The next step is to calculate the annualized volatility and the rolling-window volatility of returns. This can be done either at the daily, monthly, quarterly frequency, etc. Here is the code for the monthly. width = 22 (252 for yearly frequency)
+#calcutate annualized volatility returns
+sd(return)
+sqrt(252)*sd(return["2020"])
+chart.RollingPerformance(R=return["2010::2020"],width = 22,FUN="sd.annualized",scale=252,main = "TESLA's monthly volatility")
+```
+```{r}
+#we can see that there are months with very high volatility and months with very low volatility, suggesting the stochastic model for conditional volatility.
+mod_specify= ugarchspec(mean.model = list(armaorder=c(0,0)),variance.model = list(model= "sGARCH",garchOrder=c(1,1)),distribution.model = 'norm')
+#model fitting code
+mod_fitting= ugarchfit(data = return,spec = mod_specify,out.sample = 20)
+mod_fitting
+```
+
+
+```{r}
+# Specify the GARCH model
+mod_specify <- ugarchspec(
+  mean.model = list(armaorder = c(0, 0)),
+  variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+  distribution.model = "norm"
+)
+
+# Check if there are any missing values in the data
+if (any(is.na(return))) {
+  stop("Missing values found in the data. Please handle missing values before fitting the model.")
+}
+
+# Fit the GARCH model
+mod_fitting <- ugarchfit(data = return, spec = mod_specify, out.sample = 20)
+
+# Print the model fitting results
+print(mod_fitting)
+
+```
+```{r}
+#The first table of the first part of the estimation (see table named "Optimal parameters") shows the optimal estimated parameters. This table shows the significance of the estimated parameter.
+#It shows that the constant parameter omega1 (parameter w1 in the model setting) tends to be non significant, meaning that the constant parameter seems to be not useful in this model setting. 
+# It displays the Akaike (AIC), Bayes (BIC), Hannan-Quinn and Shibata criteria for the model estimation. The lower these values, the better the model is in terms of fitting.
+```
+
+```{r}
+#The GARCH model with Skewed student distribution
+#GARCH model with skewed student t-distribution for the residual process
+mod_specify= ugarchspec(mean.model = list(armaorder=c(0,0)),variance.model = list(model="sGARCH",garchorder=c(1,1)),distribution.model = 'sstd')
+mod_fitting =ugarchfit(data = return,spec = mod_specify,out.sample = 20)
+mod_fitting
+plot(mod_fitting, which="all")
+```
+```{r}
+# Fit the GARCH model
+mod_fitting <- ugarchfit(data = return, spec = mod_specify, out.sample = 20)
+
+# Print the model fitting results
+print(mod_fitting)
+
+# Adjust plot margins
+par(mar = c(5, 5, 2, 2))  # Adjust the margins as needed (bottom, left, top, right)
+
+# Plot the model fitting results
+plot(mod_fitting, which = "all")
+
+```
+
+```{r}
+mod_specify= ugarchspec(mean.model = list(armaorder=c(0,0)),variance.model = list(model="gjrGARCH",garchorder=c(1,1)),distribution.model = 'sstd')
+mod_fitting =ugarchfit(data = return,spec = mod_specify,out.sample = 20)
+mod_fitting
+plot(mod_fitting, which="all")
+```
+
+```{r}
+mod_fitting <- ugarchfit(data = return, spec = mod_specify, out.sample = 20)
+
+# Print the model fitting results
+print(mod_fitting)
+
+# Adjust plot margins
+par(mar = c(5, 5, 2, 2))  # Adjust the margins as needed (bottom, left, top, right)
+
+# Plot the model fitting results
+plot(mod_fitting, which = "all")
+```
+```{r}
+mod_specify= ugarchspec(mean.model = list(armaorder=c(0,0)),variance.model = list(model="gjrGARCH",garchorder=c(1,1)),distribution.model = 'sstd')
+mod_fitting =ugarchfit(data = return,spec = mod_specify,out.sample = 20)
+mod_fitting
+forc=ugarchforecast(fitORspec = mod_fitting,n.ahead = 20)
+plot(fitted(forc))
+plot(sigma(forc))
+
+```
+
+```{r}
+df=read.csv("C:\\Users\\Shobhan Sarkar\\OneDrive\\Desktop\\energy papers\\BTC-USD.csv")
+head(df)
+
+```
+```{r}
+View(df)
+#if a time series displays a stochastic trend, we should always consider the ARIMA model instead of the simple ARMA model
+```
+
+```{r}
+BTCDATA= ts(df[,6],frequency = 12,start = c(2015,1))
+View(BTCDATA)
+#head(BTCDATA)
+```
+
+```{r plot the time series}
+plot(BTCDATA,main="Bitcoin monthly data")
+abline(reg = lm(BTCDATA~time(BTCDATA),col="red"))
+```
+
+```{r arima model estimation}
+AR=arima(BTCDATA,order = c(2,1,2))
+print(AR)
+```
+```{r}
+ts.plot(BTCDATA,main="Monthly Bitcoin and Predicted")
+AR_fit=BTCDATA-residuals(AR)
+points(AR_fit,type="l",col="red",lty=2)
+```
+```{r}
+predict_AR=predict(AR)
+predict_AR$pred[1]
+predict(AR,n.ahead = 50)
+predict_AR$pred
+
+```
+
+```{r}
+#obtaining 1 step forecast using spread[1]
+predict_AR$pred[1]
+#Alternatively using predicts to make 1-step through 5-step forecasts
+predict(AR,n.ahead = 5)
+predict_AR$pred
+```
+```{r Interval Forecasting using ARMA model}
+ts.plot(BTCDATA,xlim=c(2015,2024))
+AR_forecast= predict(AR,n.head=5)$pred
+AR_forecast_se=predict(AR,n.head=5)$se
+points(AR_forecast,type="l",col=2)
+points(AR_forecast-2*AR_forecast_se,type="l",col=2,lty=2)
+points(AR_forecast+2*AR_forecast_se,type="l",col=2,lty=2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
